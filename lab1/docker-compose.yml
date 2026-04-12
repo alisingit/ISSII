@@ -1,0 +1,120 @@
+version: "3.9"
+
+x-airflow-common: &airflow-common
+  build: .
+  image: lab1-airflow:latest
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+    # URL, с которого открывают UI (см. ports webserver). Иначе «served logs» в UI ломаются.
+    AIRFLOW__WEBSERVER__BASE_URL: "http://localhost:8081"
+    # MinIO / S3 connection
+    AIRFLOW_CONN_MINIO_S3: '{"conn_type": "aws", "login": "minioadmin", "password": "minioadmin", "extra": {"endpoint_url": "http://minio:9000", "region_name": "us-east-1"}}'
+    # Python path для скриптов
+    PYTHONPATH: /opt/airflow/scripts
+    # Переменные для скриптов
+    MINIO_ENDPOINT: "http://minio:9000"
+    MINIO_ACCESS_KEY: "minioadmin"
+    MINIO_SECRET_KEY: "minioadmin"
+    MINIO_BUCKET: "data-lake"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./scripts:/opt/airflow/scripts
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./data:/opt/airflow/data
+  depends_on:
+    postgres:
+      condition: service_healthy
+  networks:
+    - lab1-net
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+    networks:
+      - lab1-net
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web-консоль
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      retries: 5
+    networks:
+      - lab1-net
+
+  # Создаёт бакет data-lake при первом запуске
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 minioadmin minioadmin;
+        mc mb --ignore-existing local/data-lake;
+        mc mb --ignore-existing local/data-lake/raw;
+        mc mb --ignore-existing local/data-lake/staging;
+        mc mb --ignore-existing local/data-lake/processed;
+        mc mb --ignore-existing local/data-lake/increment;
+        echo 'Buckets ready';
+      "
+    networks:
+      - lab1-net
+
+  airflow-init:
+    <<: *airflow-common
+    command: bash -c "airflow db migrate && airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin"
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    hostname: airflow-webserver
+    # Хост-порт 8081: на 8080 часто уже сидит другой nginx/прокси (curl показывал Server: nginx)
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      retries: 5
+    restart: unless-stopped
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    # LocalExecutor: задачи выполняются в scheduler; для подтягивания логов в UI нужен стабильный hostname
+    hostname: airflow-scheduler
+    restart: unless-stopped
+
+networks:
+  lab1-net:
+    driver: bridge
+
+volumes:
+  postgres-db:
+  minio-data:

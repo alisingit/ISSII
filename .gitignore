@@ -1,0 +1,29 @@
+# правило курса
+adv/
+
+# окружение и секреты
+.venv/
+.kaggle/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Airflow / Docker артефакты
+lab1/logs/
+
+# большие данные (скачивать по README)
+lab1/data/raw/*.csv
+lab1/data/increment/*.parquet
