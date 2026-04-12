@@ -7,7 +7,7 @@ DAG: ecommerce_preprocessing_pipeline
   load_raw_to_minio  (если данные не загружены)
         |
   ┌─────┴─────┐
-pandas_preprocess  spark_preprocess   <- параллельно
+transactions_preprocess  reviews_preprocess   <- параллельно
   └─────┬─────┘
   validate_staging
         |
@@ -47,7 +47,7 @@ def _check_raw_data(**ctx) -> str:
     csv_keys = [k for k in keys if k.endswith(".csv")]
     if len(csv_keys) >= 8:
         print(f"Raw data OK: {len(csv_keys)} файлов")
-        return "pandas_preprocess"
+        return "transactions_preprocess"
     else:
         print(f"Raw data не найдены ({len(csv_keys)} CSV). Нужна ручная загрузка.")
         # В реальном проекте здесь был бы оператор загрузки с Kaggle API.
@@ -59,7 +59,7 @@ def _check_raw_data(**ctx) -> str:
 
 
 def _validate_staging(**ctx) -> None:
-    """Проверяет, что оба staging-файла существуют и не пустые."""
+    """Проверяет, что оба staging-файла существуют, не пустые и содержат корректные значения."""
     import minio_utils
     import pandas as pd
 
@@ -68,6 +68,16 @@ def _validate_staging(**ctx) -> None:
         assert len(df) > 0, f"{key} пустой!"
         assert "order_id" in df.columns, f"{key}: нет order_id"
         print(f"[OK] {key}: {df.shape}")
+
+    # Дополнительные проверки числовых признаков транзакционного staging
+    tx = minio_utils.download_df("staging/transactions_features.parquet")
+    if "delivery_days" in tx.columns:
+        neg = int((tx["delivery_days"] < 0).sum())
+        assert neg == 0, f"delivery_days: {neg} отрицательных значений"
+        print(f"[OK] delivery_days >= 0")
+    if "price" in tx.columns:
+        assert (tx["price"] >= 0).all(), "price содержит отрицательные значения"
+        print(f"[OK] price >= 0")
 
 
 def _check_increment(**ctx) -> str:
@@ -90,7 +100,7 @@ def _pipeline_complete(**ctx) -> None:
 with DAG(
     dag_id="ecommerce_preprocessing_pipeline",
     default_args=DEFAULT_ARGS,
-    description="Предобработка данных Olist: pandas + Spark ветки, MinIO, инкремент",
+    description="Предобработка данных Olist: pandas + sklearn, MinIO, инкремент",
     schedule_interval="@daily",
     start_date=datetime(2024, 1, 1),
     catchup=False,
@@ -102,13 +112,13 @@ with DAG(
         python_callable=_check_raw_data,
     )
 
-    def _run_pandas(**ctx):
-        import pandas_preprocess
-        pandas_preprocess.run()
+    def _run_transactions(**ctx):
+        import transactions_preprocess
+        transactions_preprocess.run()
 
-    def _run_spark(**ctx):
-        import spark_preprocess
-        spark_preprocess.run()
+    def _run_reviews(**ctx):
+        import reviews_preprocess
+        reviews_preprocess.run()
 
     def _run_join(**ctx):
         import join_features
@@ -118,14 +128,14 @@ with DAG(
         import load_increment
         return load_increment.run()
 
-    task_pandas = PythonOperator(
-        task_id="pandas_preprocess",
-        python_callable=_run_pandas,
+    task_transactions = PythonOperator(
+        task_id="transactions_preprocess",
+        python_callable=_run_transactions,
     )
 
-    task_spark = PythonOperator(
-        task_id="spark_preprocess",
-        python_callable=_run_spark,
+    task_reviews = PythonOperator(
+        task_id="reviews_preprocess",
+        python_callable=_run_reviews,
     )
 
     validate_staging = PythonOperator(
@@ -155,8 +165,8 @@ with DAG(
     )
 
     # Граф зависимостей
-    check_raw >> [task_pandas, task_spark]
-    [task_pandas, task_spark] >> validate_staging
+    check_raw >> [task_transactions, task_reviews]
+    [task_transactions, task_reviews] >> validate_staging
     validate_staging >> task_join
     task_join >> check_incr
     check_incr >> [task_increment, task_done]

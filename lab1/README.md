@@ -20,9 +20,9 @@ data/raw/  ──► MinIO (raw/)
                    │
           ┌────────┴────────┐
           ▼                 ▼
-   pandas_preprocess   spark_preprocess
-   (транзакции,        (отзывы + геоданные,
-    товары, клиенты)    PySpark)
+   transactions_preprocess   reviews_preprocess
+   (транзакции,               (отзывы + геоданные,
+    товары, клиенты)          pandas + sklearn)
           │                 │
           └────────┬────────┘
                    ▼
@@ -40,7 +40,7 @@ data/raw/  ──► MinIO (raw/)
 **Обоснование**:
 - S3-совместимый API — промышленный стандарт для data lake
 - Легко разворачивается в Docker без облачных расходов
-- Поддерживается pandas (`s3fs`, `boto3`) и PySpark (`hadoop-aws`)
+- Доступ через `boto3` / `s3fs` из любого Python-скрипта
 - Слоистая структура хранения: `raw/` → `staging/` → `processed/`
 - Бесшовная замена на облачный S3/Yandex Object Storage в будущем
 
@@ -108,15 +108,15 @@ python scripts/upload_raw_data.py
 ```
 lab1/
 ├── docker-compose.yml         # AirFlow + MinIO + PostgreSQL
-├── Dockerfile                 # AirFlow + Java + зависимости
+├── Dockerfile                 # AirFlow + зависимости
 ├── requirements.txt
 ├── dags/
 │   └── ecommerce_pipeline.py  # Основной DAG
 ├── scripts/
 │   ├── minio_utils.py         # Утилиты для работы с MinIO
 │   ├── upload_raw_data.py     # Загрузка CSV в MinIO (разово)
-│   ├── pandas_preprocess.py   # Студент 1: транзакционные данные
-│   ├── spark_preprocess.py    # Студент 2: отзывы + геоданные
+│   ├── transactions_preprocess.py  # транзакционные данные
+│   ├── reviews_preprocess.py  # Студент 2: отзывы + геоданные (pandas + sklearn)
 │   ├── join_features.py       # Объединение фичей
 │   └── load_increment.py      # Инкрементальная загрузка
 ├── notebooks/
@@ -132,10 +132,10 @@ lab1/
 | Задача | Описание |
 |---|---|
 | `check_raw_data` | Проверяет наличие CSV в MinIO `raw/` |
-| `pandas_preprocess` | Join таблиц, обработка пропусков, feature engineering |
-| `spark_preprocess` | Токенизация отзывов, TF-IDF, расстояние покупатель-продавец |
+| `transactions_preprocess` | Join таблиц, обработка пропусков, feature engineering |
+| `reviews_preprocess` | Токенизация отзывов, TF-IDF (sklearn), расстояние покупатель-продавец |
 | `validate_staging` | Проверка схемы и заполненности промежуточных файлов |
-| `join_features` | Объединение pandas и Spark результатов |
+| `join_features` | Объединение результатов обеих веток предобработки |
 | `check_increment` | Ветвление: есть ли новые файлы в `increment/`? |
 | `load_increment` | Загрузка и мерж инкрементальных данных |
 

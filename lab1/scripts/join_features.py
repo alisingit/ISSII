@@ -1,9 +1,9 @@
 """
-Объединяет результаты pandas и Spark веток в финальный датасет.
+Объединяет результаты двух веток предобработки в финальный датасет.
 
 Входные данные (из MinIO staging/):
-  - transactions_features.parquet  (от pandas_preprocess.py)
-  - reviews_features.parquet        (от spark_preprocess.py)
+  - transactions_features.parquet  (от transactions_preprocess.py)
+  - reviews_features.parquet        (от reviews_preprocess.py)
 
 Выходные данные (в MinIO processed/):
   - final_dataset.parquet
@@ -47,11 +47,16 @@ def run():
         total_freight=("freight_value", "sum"),
         avg_freight_ratio=("freight_ratio", "mean"),
         delivery_days=("delivery_days", "first"),
+        estimated_days=("estimated_days", "first"),
         delivery_delay_days=("delivery_delay_days", "first"),
+        is_late_delivery=("is_late_delivery", "first"),
         purchase_dayofweek=("purchase_dayofweek", "first"),
         purchase_month=("purchase_month", "first"),
         purchase_hour=("purchase_hour", "first"),
     ).reset_index()
+    agg_transactions["freight_to_price_ratio"] = (
+        agg_transactions["total_freight"] / (agg_transactions["total_price"] + 1e-6)
+    )
 
     # Добавляем OHE-колонки (берём первую запись по order_id)
     ohe_cols = [c for c in transactions.columns if c.startswith(("order_status_", "customer_state_", "price_bin_"))]

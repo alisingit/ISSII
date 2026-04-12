@@ -1,5 +1,5 @@
 """
-Студент 1 — pandas-предобработка транзакционных данных.
+Предобработка транзакционных данных (pandas): заказы, позиции, товары, клиенты.
 
 Входные данные (из MinIO raw/):
   - olist_orders_dataset.csv
@@ -102,6 +102,7 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
 
     # Отношение стоимости фрахта к цене товара
     df["freight_ratio"] = df["freight_value"] / (df["price"] + 1e-6)
+    df["is_late_delivery"] = (df["delivery_delay_days"] > 0).astype(int)
 
     # Бинарная целевая переменная будет добавлена после join с отзывами
     return df
@@ -125,6 +126,7 @@ def select_features(df: pd.DataFrame) -> pd.DataFrame:
         "delivery_days",
         "estimated_days",
         "delivery_delay_days",
+        "is_late_delivery",
         "purchase_dayofweek",
         "purchase_month",
         "purchase_hour",
@@ -147,7 +149,7 @@ def select_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def run():
-    print("=== Pandas preprocessing: start ===")
+    print("=== transactions preprocessing: start ===")
     tables = load_tables()
     df = join_tables(tables)
     df = handle_datetime(df)

@@ -4,9 +4,11 @@
 
 Логика:
 1. Проверяет наличие файлов в increment/
-2. Прогоняет каждый через ту же pandas-предобработку
-3. Мержит с текущим processed/final_dataset.parquet
-4. Сохраняет обновлённый датасет обратно
+2. Если файл — сырой CSV (содержит order_purchase_timestamp),
+   прогоняет его через те же этапы pandas-предобработки;
+   иначе (parquet или уже обработанный CSV) добавляет напрямую.
+3. Мержит с текущим processed/final_dataset.parquet (дедупликация по order_id).
+4. Сохраняет обновлённый датасет обратно.
 """
 
 import io
@@ -20,6 +22,25 @@ sys.path.insert(0, os.path.dirname(__file__))
 from minio_utils import download_df, get_s3_client, list_keys, upload_df
 
 BUCKET = os.getenv("MINIO_BUCKET", "data-lake")
+
+# Колонка, однозначно указывающая на сырые данные заказов
+_RAW_SIGNAL_COL = "order_purchase_timestamp"
+
+
+def _preprocess_raw_csv(raw_bytes: bytes) -> pd.DataFrame:
+    """
+    Прогоняет сырой CSV заказов через те же этапы предобработки, что и
+    основной пайплайн (без загрузки в MinIO).
+    """
+    import transactions_preprocess
+
+    df = pd.read_csv(io.BytesIO(raw_bytes))
+    df = transactions_preprocess.handle_datetime(df)
+    df = transactions_preprocess.handle_missing(df)
+    df = transactions_preprocess.feature_engineering(df)
+    df = transactions_preprocess.encode_categoricals(df)
+    df = transactions_preprocess.select_features(df)
+    return df
 
 
 def move_processed_increment(s3_key: str) -> None:
@@ -61,7 +82,13 @@ def run() -> dict:
         raw_bytes = response["Body"].read()
 
         if key.endswith(".csv"):
-            chunk = pd.read_csv(io.BytesIO(raw_bytes))
+            probe = pd.read_csv(io.BytesIO(raw_bytes), nrows=1)
+            if _RAW_SIGNAL_COL in probe.columns:
+                print(f"  → сырой CSV, запускаем предобработку")
+                chunk = _preprocess_raw_csv(raw_bytes)
+            else:
+                print(f"  → обработанный CSV, добавляем напрямую")
+                chunk = pd.read_csv(io.BytesIO(raw_bytes))
         else:
             chunk = pd.read_parquet(io.BytesIO(raw_bytes))
 
