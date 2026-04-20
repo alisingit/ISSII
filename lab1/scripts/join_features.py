@@ -40,7 +40,7 @@ def run():
     validate_df(reviews, "reviews")
 
     # Агрегируем транзакции до уровня заказа (order_id уникален в reviews)
-    # items_per_order — сколько позиций в заказе
+    # items_per_order - сколько позиций в заказе
     agg_transactions = transactions.groupby("order_id").agg(
         items_count=("product_id", "count"),
         total_price=("price", "sum"),

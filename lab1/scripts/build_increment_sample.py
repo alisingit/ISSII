@@ -1,8 +1,8 @@
 """
 Строит файл инкремента из случайной части уже обработанного датасета.
 
-Идея для демо: строки берутся из processed/final_dataset.parquet (те же фичи),
-но order_id заменяются на новые уникальные значения — тогда load_increment
+Строки берутся из processed/final_dataset.parquet (те же фичи),
+но order_id заменяются на новые уникальные значения, тогда load_increment
 добавит их к основному parquet (дедупликация по старым order_id их не отсечёт).
 
 Результат:
@@ -27,7 +27,7 @@ def build_increment(n_rows: int, seed: int, upload: bool) -> str:
     processed = download_df("processed/final_dataset.parquet")
     n = min(n_rows, len(processed))
     if n < 1:
-        raise RuntimeError("processed/final_dataset.parquet пустой — сначала прогоните пайплайн.")
+        raise RuntimeError("processed/final_dataset.parquet пустой")
 
     sample = processed.sample(n=n, random_state=seed).reset_index(drop=True).copy()
     prefix = pd.Timestamp.utcnow().strftime("inc-%Y%m%d-")

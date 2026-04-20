@@ -10,7 +10,6 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
-    # URL, с которого открывают UI (см. ports webserver). Иначе «served logs» в UI ломаются.
     AIRFLOW__WEBSERVER__BASE_URL: "http://localhost:8081"
     # MinIO / S3 connection
     AIRFLOW_CONN_MINIO_S3: '{"conn_type": "aws", "login": "minioadmin", "password": "minioadmin", "extra": {"endpoint_url": "http://minio:9000", "region_name": "us-east-1"}}'
@@ -95,7 +94,6 @@ services:
     <<: *airflow-common
     command: webserver
     hostname: airflow-webserver
-    # Хост-порт 8081: на 8080 часто уже сидит другой nginx/прокси (curl показывал Server: nginx)
     ports:
       - "8081:8080"
     healthcheck:
@@ -107,7 +105,6 @@ services:
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
-    # LocalExecutor: задачи выполняются в scheduler; для подтягивания логов в UI нужен стабильный hostname
     hostname: airflow-scheduler
     restart: unless-stopped
 

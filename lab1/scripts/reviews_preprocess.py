@@ -31,7 +31,6 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from minio_utils import download_csv, upload_df
 
-# ─── стоп-слова ───────────────────────────────────────────────────────────────
 
 _PT_STOPWORDS = {
     "de", "a", "o", "que", "e", "do", "da", "em", "um", "para",
@@ -50,7 +49,7 @@ _PT_STOPWORDS = {
     "aquilo", "estou", "esta", "estamos", "estao", "estive",
 }
 
-# ─── NLP ──────────────────────────────────────────────────────────────────────
+# NLP
 
 def process_reviews(reviews: pd.DataFrame) -> pd.DataFrame:
     """Токенизация, TF-IDF, длина текста, целевая переменная."""
@@ -105,10 +104,10 @@ def process_reviews(reviews: pd.DataFrame) -> pd.DataFrame:
     ]
 
 
-# ─── Геодистанция ─────────────────────────────────────────────────────────────
+# Геодистанция
 
 def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Расстояние между двумя точками на сфере (км)."""
+    """Расстояние между двумя точками на сфере (км)"""
     if any(v != v for v in (lat1, lon1, lat2, lon2)):   # NaN check
         return float("nan")
     R = 6371.0
@@ -168,8 +167,6 @@ def process_geodistance() -> pd.DataFrame:
 
     return geo_df.groupby("order_id")["distance_km"].mean().rename("avg_seller_distance_km").reset_index()
 
-
-# ─── Entry point ──────────────────────────────────────────────────────────────
 
 def run():
     print("=== pandas preprocessing (reviews + geo): start ===")

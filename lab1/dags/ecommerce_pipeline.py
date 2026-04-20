@@ -41,7 +41,7 @@ DEFAULT_ARGS = {
 
 
 def _check_raw_data(**ctx) -> str:
-    """Проверяет, загружены ли уже сырые данные в MinIO."""
+    """Проверяет, загружены ли уже сырые данные в MinIO"""
     import minio_utils
     keys = minio_utils.list_keys("raw/")
     csv_keys = [k for k in keys if k.endswith(".csv")]
@@ -50,8 +50,6 @@ def _check_raw_data(**ctx) -> str:
         return "transactions_preprocess"
     else:
         print(f"Raw data не найдены ({len(csv_keys)} CSV). Нужна ручная загрузка.")
-        # В реальном проекте здесь был бы оператор загрузки с Kaggle API.
-        # Пока бросаем исключение с инструкцией.
         raise FileNotFoundError(
             "Загрузите CSV-файлы датасета Olist в data/raw/ и запустите: "
             "python scripts/upload_raw_data.py"
@@ -59,7 +57,7 @@ def _check_raw_data(**ctx) -> str:
 
 
 def _validate_staging(**ctx) -> None:
-    """Проверяет, что оба staging-файла существуют, не пустые и содержат корректные значения."""
+    """Проверяет, что оба staging-файла существуют, не пустые и содержат корректные значения"""
     import minio_utils
     import pandas as pd
 
@@ -100,7 +98,7 @@ def _pipeline_complete(**ctx) -> None:
 with DAG(
     dag_id="ecommerce_preprocessing_pipeline",
     default_args=DEFAULT_ARGS,
-    description="Предобработка данных Olist: pandas + sklearn, MinIO, инкремент",
+    description="Предобработка данных Olist",
     schedule_interval="@daily",
     start_date=datetime(2024, 1, 1),
     catchup=False,

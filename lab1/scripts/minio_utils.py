@@ -10,6 +10,8 @@ MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://localhost:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
 BUCKET = os.getenv("MINIO_BUCKET", "data-lake")
+PREVIEW_PREFIX = os.getenv("MINIO_PREVIEW_PREFIX", "preview")
+PREVIEW_ROWS = int(os.getenv("MINIO_PREVIEW_ROWS", "50"))
 
 
 def get_s3_client():
@@ -23,21 +25,50 @@ def get_s3_client():
     )
 
 
+def _build_preview_key(s3_key: str) -> str:
+    base, ext = os.path.splitext(s3_key)
+    if ext.lower() == ".parquet":
+        return f"{PREVIEW_PREFIX}/{base}.sample.csv"
+    return f"{PREVIEW_PREFIX}/{s3_key}.sample.csv"
+
+
 def upload_df(df: pd.DataFrame, s3_key: str) -> None:
-    """Загружает DataFrame в MinIO как parquet-файл."""
+    """Загружает DataFrame в MinIO как parquet-файл и CSV-preview для UI."""
     client = get_s3_client()
-    buffer = io.BytesIO()
-    df.to_parquet(buffer, index=False, engine="pyarrow")
-    buffer.seek(0)
-    client.put_object(Bucket=BUCKET, Key=s3_key, Body=buffer.getvalue())
+    parquet_buffer = io.BytesIO()
+    df.to_parquet(parquet_buffer, index=False, engine="pyarrow")
+    parquet_buffer.seek(0)
+    client.put_object(
+        Bucket=BUCKET,
+        Key=s3_key,
+        Body=parquet_buffer.getvalue(),
+        ContentType="application/octet-stream",
+    )
     print(f"Uploaded {len(df)} rows -> s3://{BUCKET}/{s3_key}")
+
+    # Preview кладём в отдельный префикс, чтобы UI мог открыть CSV
+    preview_key = _build_preview_key(s3_key)
+    preview_buffer = io.StringIO()
+    df.head(PREVIEW_ROWS).to_csv(preview_buffer, index=False)
+    client.put_object(
+        Bucket=BUCKET,
+        Key=preview_key,
+        Body=preview_buffer.getvalue().encode("utf-8"),
+        ContentType="text/csv; charset=utf-8",
+    )
+    print(f"Uploaded preview ({min(len(df), PREVIEW_ROWS)} rows) -> s3://{BUCKET}/{preview_key}")
 
 
 def upload_csv(local_path: str, s3_key: str) -> None:
     """Загружает локальный CSV-файл в MinIO как есть."""
     client = get_s3_client()
     with open(local_path, "rb") as f:
-        client.put_object(Bucket=BUCKET, Key=s3_key, Body=f.read())
+        client.put_object(
+            Bucket=BUCKET,
+            Key=s3_key,
+            Body=f.read(),
+            ContentType="text/csv; charset=utf-8",
+        )
     print(f"Uploaded {local_path} -> s3://{BUCKET}/{s3_key}")
 
 
