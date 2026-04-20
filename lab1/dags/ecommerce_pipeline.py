@@ -7,7 +7,7 @@ DAG: ecommerce_preprocessing_pipeline
   load_raw_to_minio  (если данные не загружены)
         |
   ┌─────┴─────┐
-transactions_preprocess  reviews_preprocess   <- параллельно
+transactions_preprocess  reviews_preprocess
   └─────┬─────┘
   validate_staging
         |
@@ -100,7 +100,7 @@ with DAG(
     default_args=DEFAULT_ARGS,
     description="Предобработка данных Olist",
     schedule_interval="@daily",
-    start_date=datetime(2024, 1, 1),
+    start_date=datetime(2026, 1, 1),
     catchup=False,
     tags=["lab1", "preprocessing", "ecommerce"],
 ) as dag:
