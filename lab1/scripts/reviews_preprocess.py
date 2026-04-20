@@ -22,10 +22,11 @@
 import math
 import os
 import sys
+import unicodedata
 
 import numpy as np
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -41,13 +42,29 @@ _PT_STOPWORDS = {
     "sem", "mesmo", "aos", "seus", "quem", "nas", "me", "esse",
     "eles", "voce", "essa", "num", "nem", "suas", "meu",
     "minha", "numa", "pelos", "elas", "havia", "seja", "qual",
-    "sera", "nos", "tenho", "lhe", "deles", "essas", "esses",
+    "sera", "tenho", "lhe", "deles", "essas", "esses",
     "pelas", "este", "dele", "tu", "te", "voces", "vos", "lhes",
     "meus", "minhas", "teu", "tua", "teus", "tuas", "nosso",
     "nossa", "nossos", "nossas", "dela", "delas", "esta", "estes",
     "estas", "aquele", "aquela", "aqueles", "aquelas", "isto",
-    "aquilo", "estou", "esta", "estamos", "estao", "estive",
+    "aquilo", "estou", "estamos", "estao", "estive", "nao",
+    "sao", "ha", "foi", "era", "ser", "ter", "bem", "muito",
 }
+
+# Объединённый список стоп-слов для TF-IDF: корпус преимущественно PT,
+# но встречаются английские слова в названиях товаров и комментариях.
+# Фильтруем по длине, чтобы список был согласован с token_pattern (`\w{2,}`).
+_TFIDF_STOPWORDS = sorted({w for w in (set(ENGLISH_STOP_WORDS) | _PT_STOPWORDS) if len(w) >= 2})
+
+
+def _strip_accents(text: str) -> str:
+    """Удаляет диакритику, чтобы `não/esta/está` совпадали со стоп-словами."""
+    if not isinstance(text, str):
+        return ""
+    return "".join(
+        ch for ch in unicodedata.normalize("NFD", text)
+        if unicodedata.category(ch) != "Mn"
+    )
 
 # NLP
 
@@ -59,13 +76,13 @@ def process_reviews(reviews: pd.DataFrame) -> pd.DataFrame:
     reviews["review_creation_date"] = pd.to_datetime(reviews["review_creation_date"], errors="coerce")
     reviews["review_answer_timestamp"] = pd.to_datetime(reviews["review_answer_timestamp"], errors="coerce")
 
-    reviews["full_text"] = (
-        reviews["review_comment_title"] + " " + reviews["review_comment_message"]
+    full_text_raw = (
+        reviews["review_comment_title"].fillna("") + " " + reviews["review_comment_message"].fillna("")
     ).str.lower()
+    reviews["full_text"] = full_text_raw.map(_strip_accents)
     reviews["has_title"] = (reviews["review_comment_title"].str.strip() != "").astype(int)
     reviews["has_message"] = (reviews["review_comment_message"].str.strip() != "").astype(int)
 
-    # Длина в словах после удаления стоп-слов
     def _token_count(text: str) -> int:
         tokens = text.split()
         return sum(1 for t in tokens if t not in _PT_STOPWORDS and len(t) > 1)
@@ -75,11 +92,11 @@ def process_reviews(reviews: pd.DataFrame) -> pd.DataFrame:
         reviews["review_answer_timestamp"] - reviews["review_creation_date"]
     ) / pd.Timedelta(hours=1)
 
-    # TF-IDF (sklearn): min_df=5, max_features=512
+    # TF-IDF на нормализованном тексте, объединённые стоп-слова EN+PT
     vectorizer = TfidfVectorizer(
         min_df=5,
         max_features=512,
-        stop_words="english",   # английские стоп-слова встроены
+        stop_words=_TFIDF_STOPWORDS,
         token_pattern=r"(?u)\b\w{2,}\b",
     )
     tfidf_matrix = vectorizer.fit_transform(reviews["full_text"])

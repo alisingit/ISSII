@@ -41,25 +41,45 @@ def run():
 
     # Агрегируем транзакции до уровня заказа (order_id уникален в reviews)
     # items_per_order - сколько позиций в заказе
-    agg_transactions = transactions.groupby("order_id").agg(
-        items_count=("product_id", "count"),
-        total_price=("price", "sum"),
-        total_freight=("freight_value", "sum"),
-        avg_freight_ratio=("freight_ratio", "mean"),
-        delivery_days=("delivery_days", "first"),
-        estimated_days=("estimated_days", "first"),
-        delivery_delay_days=("delivery_delay_days", "first"),
-        is_late_delivery=("is_late_delivery", "first"),
-        purchase_dayofweek=("purchase_dayofweek", "first"),
-        purchase_month=("purchase_month", "first"),
-        purchase_hour=("purchase_hour", "first"),
-    ).reset_index()
+    product_numeric_cols = [
+        "product_weight_g",
+        "product_length_cm",
+        "product_height_cm",
+        "product_width_cm",
+        "product_photos_qty",
+        "product_name_lenght",
+        "product_description_lenght",
+    ]
+    order_level_aggs = {
+        "items_count": ("product_id", "count"),
+        "total_price": ("price", "sum"),
+        "total_freight": ("freight_value", "sum"),
+        "avg_freight_ratio": ("freight_ratio", "mean"),
+        "delivery_days": ("delivery_days", "first"),
+        "estimated_days": ("estimated_days", "first"),
+        "delivery_delay_days": ("delivery_delay_days", "first"),
+        "is_late_delivery": ("is_late_delivery", "first"),
+        "purchase_dayofweek": ("purchase_dayofweek", "first"),
+        "purchase_month": ("purchase_month", "first"),
+        "purchase_hour": ("purchase_hour", "first"),
+    }
+    for col in ("total_payment_value", "max_installments"):
+        if col in transactions.columns:
+            order_level_aggs[col] = (col, "first")
+    # Усредняем физические и текстовые характеристики товаров по заказу
+    for col in product_numeric_cols:
+        if col in transactions.columns:
+            order_level_aggs[f"avg_{col}"] = (col, "mean")
+
+    agg_transactions = transactions.groupby("order_id").agg(**order_level_aggs).reset_index()
     agg_transactions["freight_to_price_ratio"] = (
         agg_transactions["total_freight"] / (agg_transactions["total_price"] + 1e-6)
     )
 
-    # Добавляем OHE-колонки (берём первую запись по order_id)
-    ohe_cols = [c for c in transactions.columns if c.startswith(("order_status_", "customer_state_", "price_bin_"))]
+    ohe_cols = [
+        c for c in transactions.columns
+        if c.startswith(("order_status_", "customer_state_", "price_bin_", "payment_type_"))
+    ]
     if ohe_cols:
         ohe_part = transactions.groupby("order_id")[ohe_cols].first().reset_index()
         agg_transactions = agg_transactions.merge(ohe_part, on="order_id", how="left")
@@ -67,7 +87,12 @@ def run():
     final = agg_transactions.merge(reviews, on="order_id", how="inner")
     print(f"После join: {final.shape}")
 
-    # Финальная валидация
+    if "avg_seller_distance_km" in final.columns:
+        final["has_seller_distance"] = final["avg_seller_distance_km"].notna().astype(int)
+        final["avg_seller_distance_km"] = final["avg_seller_distance_km"].fillna(
+            final["avg_seller_distance_km"].median()
+        )
+
     validate_df(final, "final_dataset")
     assert "is_satisfied" in final.columns, "Нет целевой переменной is_satisfied"
 
