@@ -1,0 +1,1 @@
+"""Пакет lab2-model-training."""
