@@ -16,7 +16,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from minio_utils import download_df, upload_df
+from minio_utils import download_df, upload_df, upload_df_partition
 
 
 def validate_df(df: pd.DataFrame, name: str) -> None:
@@ -96,7 +96,13 @@ def run():
     validate_df(final, "final_dataset")
     assert "is_satisfied" in final.columns, "Нет целевой переменной is_satisfied"
 
-    upload_df(final, "processed/final_dataset.parquet")
+    # 1. Сохраняем начальную партицию
+    upload_df_partition(final, "processed/final_dataset/initial.parquet")
+
+    # 2. Создаём индексный файл с order_id
+    idx_df = final[["order_id"]]
+    upload_df(idx_df, "processed/final_dataset/_order_ids.parquet")
+    
     print(f"=== Done. Shape: {final.shape} ===")
     print(f"Целевая переменная — баланс классов:\n{final['is_satisfied'].value_counts(normalize=True)}")
 

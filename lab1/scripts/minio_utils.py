@@ -101,3 +101,44 @@ def key_exists(s3_key: str) -> bool:
         return True
     except ClientError:
         return False
+
+def upload_df_partition(df: pd.DataFrame, key: str) -> None:
+    """
+    Сохраняет DataFrame как отдельный parquet-файл в MinIO.
+    Используется для добавления новой партиции в директорию processed/final_dataset/.
+    """
+    client = get_s3_client()
+    parquet_buffer = io.BytesIO()
+    df.to_parquet(parquet_buffer, index=False, engine="pyarrow")
+    parquet_buffer.seek(0)
+    client.put_object(
+        Bucket=BUCKET,
+        Key=key,
+        Body=parquet_buffer.getvalue(),
+        ContentType="application/octet-stream",
+    )
+    print(f"Uploaded partition ({len(df)} rows) -> s3://{BUCKET}/{key}")
+
+
+def download_ids_index() -> set:
+    """
+    Загружает индексный файл processed/final_dataset/_order_ids.parquet
+    и возвращает множество уже существующих order_id.
+    Если файла нет, возвращает пустой set.
+    """
+    try:
+        df = download_df("processed/final_dataset/_order_ids.parquet")
+        return set(df["order_id"].tolist())
+    except Exception:
+        return set()
+
+
+def update_ids_index(new_ids: list[str]) -> None:
+    """
+    Дополняет индексный файл новыми order_id.
+    Загружает текущий индекс, объединяет с new_ids и перезаписывает файл.
+    """
+    current = download_ids_index()
+    current.update(new_ids)
+    idx_df = pd.DataFrame({"order_id": list(current)})
+    upload_df(idx_df, "processed/final_dataset/_order_ids.parquet")

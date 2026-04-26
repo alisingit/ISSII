@@ -19,7 +19,11 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from minio_utils import download_df, get_s3_client, list_keys, upload_df
+from minio_utils import (
+    download_df, upload_df, upload_df_partition,
+    download_ids_index, update_ids_index, get_s3_client,
+    list_keys,
+)
 
 BUCKET = os.getenv("MINIO_BUCKET", "data-lake")
 
@@ -55,7 +59,7 @@ def move_processed_increment(s3_key: str) -> None:
 def run() -> dict:
     """
     Возвращает {"new_rows": int} — сколько строк добавлено.
-    Возвращает {"new_rows": 0} если инкремента нет.
+    Возвращает {"new_rows": 0} если инкремента нет или все записи уже существуют.
     """
     print("=== Load increment: start ===")
 
@@ -67,13 +71,10 @@ def run() -> dict:
 
     print(f"Найдено файлов инкремента: {len(increment_keys)}")
 
-    # Загружаем текущий processed датасет
-    try:
-        current = download_df("processed/final_dataset.parquet")
-    except Exception:
-        print("[WARN] processed/final_dataset.parquet не найден, создаём новый.")
-        current = pd.DataFrame()
+    # 1. Загружаем только индексный файл
+    existing_ids = download_ids_index()
 
+    # 2. Обрабатываем новые файлы
     new_parts = []
     for key in increment_keys:
         print(f"Обрабатываем: {key}")
@@ -100,19 +101,23 @@ def run() -> dict:
 
     new_data = pd.concat(new_parts, ignore_index=True)
 
-    if len(current) > 0:
-        # Дедупликация по order_id — не добавляем уже существующие заказы
-        existing_ids = set(current["order_id"].tolist()) if "order_id" in current.columns else set()
-        if "order_id" in new_data.columns:
-            new_data = new_data[~new_data["order_id"].isin(existing_ids)]
+    # 3. Дедупликация по имеющемуся индексу
+    if "order_id" in new_data.columns:
+        new_data = new_data[~new_data["order_id"].isin(existing_ids)]
+        if new_data.empty:
+            print("Все новые записи уже существуют.")
+            return {"new_rows": 0}
 
-        merged = pd.concat([current, new_data], ignore_index=True)
-    else:
-        merged = new_data
+    # 4. Сохраняем новый файл-партицию (не трогая старые)
+    ts = pd.Timestamp.utcnow().strftime("%Y%m%d%H%M%S")
+    partition_key = f"processed/final_dataset/increment_{ts}.parquet"
+    upload_df_partition(new_data, partition_key)
 
-    upload_df(merged, "processed/final_dataset.parquet")
+    # 5. Обновляем индексный файл
+    update_ids_index(new_data["order_id"].tolist())
+
     added = len(new_data)
-    print(f"=== Done. Добавлено строк: {added}, итого: {len(merged)} ===")
+    print(f"=== Done. Добавлено строк: {added} ===")
     return {"new_rows": added}
 
 
