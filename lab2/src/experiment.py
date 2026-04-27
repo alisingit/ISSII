@@ -141,7 +141,6 @@ def main():
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
-    print("Фактический MLflow Tracking URI:", mlflow.get_tracking_uri()
 
     print("Загрузка данных из MinIO...")
     df = load_dataset()
