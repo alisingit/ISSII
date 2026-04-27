@@ -24,16 +24,6 @@ from sklearn.model_selection import validation_curve
 def compute_metrics(y_true, y_pred, y_proba) -> dict:
     """
     Возвращает словарь с метриками качества.
-
-    Параметры:
-    y_true : array-like
-        Истинные метки.
-    y_pred : array-like
-        Предсказанные метки.
-    y_proba : array-like
-        Вероятности положительного класса.
-
-    Возвращает словарь с ключами: accuracy, precision, recall, f1, roc_auc.
     """
     return {
         "accuracy": accuracy_score(y_true, y_pred),
