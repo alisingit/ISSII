@@ -28,9 +28,10 @@ def run_all_experiments(X_train, y_train, X_val, y_val, X_test, y_test, feature_
     print("=" * 60)
     for C in [0.1, 1.0, 10.0]:
         params = {"C": C, "solver": "lbfgs"}
+        run_name = f"baseline_lr_C={C}"
         val_m, test_m = train_and_evaluate(
             "logistic", X_train, y_train, X_val, y_val, X_test, y_test,
-            feature_names, params,
+            feature_names, params, run_name=run_name,
         )
         results[f"baseline_lr_C={C}"] = test_m
 
@@ -44,27 +45,30 @@ def run_all_experiments(X_train, y_train, X_val, y_val, X_test, y_test, feature_
     # RandomForest
     for n_est, depth in [(100, 10), (200, 15), (300, 20)]:
         params = {"n_estimators": n_est, "max_depth": depth}
+        run_name = f"hyp1_rf_n={n_est}_d={depth}"
         val_m, test_m = train_and_evaluate(
             "random_forest", X_train, y_train, X_val, y_val, X_test, y_test,
-            feature_names, params,
+            feature_names, params, run_name=run_name,
         )
         results[f"hyp1_rf_n={n_est}_d={depth}"] = test_m
 
     # XGBoost
     for n_est, lr in [(200, 0.1), (300, 0.05), (500, 0.1)]:
         params = {"n_estimators": n_est, "learning_rate": lr}
+        run_name = f"hyp1_xgb_n={n_est}_lr={lr}"
         val_m, test_m = train_and_evaluate(
             "xgboost", X_train, y_train, X_val, y_val, X_test, y_test,
-            feature_names, params,
+            feature_names, params, run_name=run_name,
         )
         results[f"hyp1_xgb_n={n_est}_lr={lr}"] = test_m
 
     # LightGBM
     for n_est, lr in [(200, 0.1), (300, 0.05)]:
         params = {"n_estimators": n_est, "learning_rate": lr}
+        run_name = f"hyp1_lgb_n={n_est}_lr={lr}"
         val_m, test_m = train_and_evaluate(
             "lightgbm", X_train, y_train, X_val, y_val, X_test, y_test,
-            feature_names, params,
+            feature_names, params, run_name=run_name,
         )
         results[f"hyp1_lgb_n={n_est}_lr={lr}"] = test_m
 
@@ -76,9 +80,10 @@ def run_all_experiments(X_train, y_train, X_val, y_val, X_test, y_test, feature_
     print("=" * 60)
     for k in (20, 30, 50):
         params = {"k": k}
+        run_name = f"hyp2_feat_sel_k={k}" 
         val_m, test_m = train_and_evaluate(
             "feat_sel", X_train, y_train, X_val, y_val, X_test, y_test,
-            feature_names, params,
+            feature_names, params, run_name=run_name,
         )
         results[f"hyp2_feat_sel_k={k}"] = test_m
 
@@ -91,18 +96,20 @@ def run_all_experiments(X_train, y_train, X_val, y_val, X_test, y_test, feature_
     # class_weight='balanced'
     for n_est in (100, 200):
         params = {"strategy": "balanced", "n_estimators": n_est, "max_depth": 15}
+        run_name = f"hyp3_balanced_rf_n={n_est}"
         val_m, test_m = train_and_evaluate(
             "imbalanced", X_train, y_train, X_val, y_val, X_test, y_test,
-            feature_names, params,
+            feature_names, params, run_name=run_name,
         )
         results[f"hyp3_balanced_rf_n={n_est}"] = test_m
 
     # SMOTE
     for n_est in (100, 200):
         params = {"strategy": "smote", "n_estimators": n_est, "max_depth": 15}
+        run_name = f"hyp3_smote_rf_n={n_est}"
         val_m, test_m = train_and_evaluate(
             "imbalanced", X_train, y_train, X_val, y_val, X_test, y_test,
-            feature_names, params,
+            feature_names, params, run_name=run_name,
         )
         results[f"hyp3_smote_rf_n={n_est}"] = test_m
 

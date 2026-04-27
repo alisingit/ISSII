@@ -45,25 +45,31 @@ def load_dataset() -> pd.DataFrame:
     """
     client = _get_s3_client()
     prefix = f"{FEATURES_DIR}/"
-    response = client.list_objects_v2(Bucket=MINIO_BUCKET, Prefix=prefix)
-
-    keys = [
-        obj["Key"]
-        for obj in response.get("Contents", [])
-        if obj["Key"].endswith(".parquet")
-        and not obj["Key"].endswith("_order_ids.parquet")
-    ]
-
+    
+    keys = []
+    continuation_token = None
+    while True:
+        list_kwargs = dict(Bucket=MINIO_BUCKET, Prefix=prefix)
+        if continuation_token:
+            list_kwargs["ContinuationToken"] = continuation_token
+        response = client.list_objects_v2(**list_kwargs)
+        
+        for obj in response.get("Contents", []):
+            if obj["Key"].endswith(".parquet") and not obj["Key"].endswith("_order_ids.parquet"):
+                keys.append(obj["Key"])
+        
+        if not response.get("IsTruncated"):
+            break
+        continuation_token = response.get("NextContinuationToken")
+    
     if not keys:
-        raise FileNotFoundError(
-            f"Нет parquet-файлов в s3://{MINIO_BUCKET}/{prefix}"
-        )
-
+        raise FileNotFoundError(f"Нет parquet-файлов в s3://{MINIO_BUCKET}/{prefix}")
+    
     parts = []
     for key in keys:
         resp = client.get_object(Bucket=MINIO_BUCKET, Key=key)
         parts.append(pd.read_parquet(io.BytesIO(resp["Body"].read())))
-
+    
     df = pd.concat(parts, ignore_index=True)
 
     print(f"Загружен датасет: {df.shape}")

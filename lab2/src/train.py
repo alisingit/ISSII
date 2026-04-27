@@ -180,6 +180,7 @@ def train_and_evaluate(
     X_test, y_test,
     feature_names,
     params: dict | None = None,
+    run_name: str | None = None,
 ):
     """Обучает модель, логирует параметры/метрики/артефакты в MLflow."""
     if params is None:
@@ -189,7 +190,7 @@ def train_and_evaluate(
     builder = MODEL_BUILDERS[model_name]
     model = builder(**params)
 
-    with mlflow.start_run(run_name=model_name):
+    with mlflow.start_run(run_name=run_name or model_name):
         mlflow.log_params(params)
         mlflow.log_param("model_name", model_name)
 
