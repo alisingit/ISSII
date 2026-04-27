@@ -77,15 +77,19 @@ def prepare_train_test_val(df: pd.DataFrame):
     Разделяет датасет на обучающую, валидационную и тестовую выборки.
 
     Параметры разбиения задаются в config.py.
+    При TEST_SIZE=0.2 и VALIDATION_SIZE=0.25 (доля от train_val) получаем:
+        - test:  20% от полного датасета
+        - val:   25% от оставшихся 80% = 20% от полного датасета
+        - train: 75% от оставшихся 80% = 60% от полного датасета
 
     Returns
     -------
-    tuple[DataFrame, DataFrame, DataFrame, Series, Series, Series]
-        X_train, X_val, X_test, y_train, y_val, y_test
+    tuple[DataFrame, DataFrame, DataFrame, Series, Series, Series, list]
+        X_train, X_val, X_test, y_train, y_val, y_test, feature_cols
     """
     from sklearn.model_selection import train_test_split
+    from sklearn.feature_selection import VarianceThreshold
 
-    # Отделяем целевую переменную от признаков
     target = "is_satisfied"
     exclude = [
         target,
@@ -94,8 +98,6 @@ def prepare_train_test_val(df: pd.DataFrame):
         "product_id",
         "review_score",
     ]
-    # ID-подобные колонки, начинающиеся с order_status_, customer_state_ и т.п.,
-    # уже являются one-hot признаками и не удаляются.
     feature_cols = [c for c in df.columns if c not in exclude and c in df.columns]
 
     X = df[feature_cols].copy()
@@ -109,15 +111,20 @@ def prepare_train_test_val(df: pd.DataFrame):
     # Заполняем пропуски медианой
     X = X.fillna(X.median())
 
-    # Разделение: train (60%) / val (20%) / test (20%)
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=TEST_SIZE + VALIDATION_SIZE,
-        random_state=RANDOM_STATE, stratify=y,
+    selector = VarianceThreshold(threshold=0.0)
+    X = pd.DataFrame(selector.fit_transform(X), columns=X.columns[selector.get_support()])
+    feature_cols = list(X.columns)
+
+    # 1. Отделяем тестовую выборку (20% от всех данных)
+    X_train_val, X_test, y_train_val, y_test = train_test_split(
+        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
     )
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp,
-        test_size=TEST_SIZE / (TEST_SIZE + VALIDATION_SIZE),
-        random_state=RANDOM_STATE, stratify=y_temp,
+
+    # 2. Из оставшихся 80% выделяем валидацию (25% от train_val, т.е. 20% от полного)
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_train_val, y_train_val,
+        test_size=VALIDATION_SIZE,  # теперь это доля от train_val
+        random_state=RANDOM_STATE, stratify=y_train_val
     )
 
     print(f"Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}")

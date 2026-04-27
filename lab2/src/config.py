@@ -26,4 +26,4 @@ FEATURES_DIR = os.getenv("FEATURES_DIR", "processed/final_dataset")
 # --- Обучение ---
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
-VALIDATION_SIZE = 0.25  # доля от train
+VALIDATION_SIZE = 0.25  # доля от train_val (80% данных) -> 0.25*0.8 = 0.2 от полного

@@ -18,6 +18,7 @@ from sklearn.metrics import (
     precision_recall_curve,
     classification_report,
 )
+from sklearn.model_selection import validation_curve
 
 
 def compute_metrics(y_true, y_pred, y_proba) -> dict:
@@ -115,3 +116,30 @@ def print_classification_report(y_true, y_pred):
             digits=4,
         )
     )
+
+
+def plot_validation_curve(estimator, X, y, param_name, param_range,
+                          cv=3, scoring="f1", save_path=None):
+    """Строит кривую валидации для одного гиперпараметра."""
+    train_scores, test_scores = validation_curve(
+        estimator, X, y,
+        param_name=param_name,
+        param_range=param_range,
+        cv=cv,
+        scoring=scoring,
+        n_jobs=-1
+    )
+    train_mean = np.mean(train_scores, axis=1)
+    test_mean = np.mean(test_scores, axis=1)
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(param_range, train_mean, 'o-', color="blue", label="Train score")
+    plt.plot(param_range, test_mean, 'o-', color="green", label="Validation score")
+    plt.xlabel(param_name)
+    plt.ylabel(scoring)
+    plt.title(f"Validation Curve for {param_name}")
+    plt.legend(loc="best")
+    plt.grid(True)
+    if save_path:
+        plt.savefig(save_path, dpi=100, bbox_inches="tight")
+    plt.close()
