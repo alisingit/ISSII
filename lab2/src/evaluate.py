@@ -25,8 +25,7 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
     """
     Возвращает словарь с метриками качества.
 
-    Parameters
-    ----------
+    Параметры:
     y_true : array-like
         Истинные метки.
     y_pred : array-like
@@ -34,10 +33,7 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
     y_proba : array-like
         Вероятности положительного класса.
 
-    Returns
-    -------
-    dict
-        Словарь с ключами: accuracy, precision, recall, f1, roc_auc.
+    Возвращает словарь с ключами: accuracy, precision, recall, f1, roc_auc.
     """
     return {
         "accuracy": accuracy_score(y_true, y_pred),
@@ -107,7 +103,7 @@ def plot_feature_importance(model, feature_names, top_n=20, save_path=None):
 
 
 def print_classification_report(y_true, y_pred):
-    """Печатает отчёт классификации."""
+    """Отчёт классификации."""
     print("\nClassification Report:")
     print(
         classification_report(

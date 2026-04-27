@@ -41,7 +41,7 @@ warnings.filterwarnings("ignore", message="invalid value encountered in divide")
 
 warnings.filterwarnings("ignore", message="X does not have valid feature names")
 
-# ---------- builder'ы моделей (без изменений) ----------
+# builder'ы моделей
 def build_baseline_model(**params):
     """Baseline: логистическая регрессия."""
     return Pipeline([
@@ -83,7 +83,6 @@ def build_xgboost_model(**params):
             colsample_bytree=params.get("colsample_bytree", 0.8),
             random_state=params.get("random_state", 42),
             eval_metric="logloss",
-            # use_label_encoder=False,
         )),
     ])
 
@@ -234,7 +233,7 @@ def train_and_evaluate(
             mlflow.log_artifact(roc_path)
             mlflow.log_artifact(fi_path)
 
-            # --- Кривая обучения (validation curve) ---
+            # Кривая обучения (validation curve)
             if model_name in HPARAM_VAL_CURVES:
                 param_name, param_range = HPARAM_VAL_CURVES[model_name]
                 vc_path = os.path.join(tmpdir, "validation_curve.png")

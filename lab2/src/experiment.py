@@ -2,12 +2,11 @@
 Точка входа для запуска экспериментов.
 
 Использование:
-    python -m src.experiment          # все эксперименты
-    python -m src.experiment --model logistic  # один эксперимент
+    poetry run python -m src.experiment          # все эксперименты
+    poetry run python -m src.experiment --model logistic  # один эксперимент
 """
 
 import argparse
-import sys
 import mlflow
 import matplotlib
 matplotlib.use("Agg")
@@ -142,6 +141,7 @@ def main():
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+    print("Фактический MLflow Tracking URI:", mlflow.get_tracking_uri()
 
     print("Загрузка данных из MinIO...")
     df = load_dataset()

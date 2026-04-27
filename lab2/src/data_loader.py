@@ -38,9 +38,7 @@ def load_dataset() -> pd.DataFrame:
     """
     Загружает итоговый датасет из MinIO (директория processed/final_dataset/).
 
-    Returns
-    -------
-    pd.DataFrame
+    Возвращает pd.DataFrame
         Полный датасет со всеми признаками и целевой переменной is_satisfied.
     """
     client = _get_s3_client()
@@ -82,15 +80,7 @@ def prepare_train_test_val(df: pd.DataFrame):
     """
     Разделяет датасет на обучающую, валидационную и тестовую выборки.
 
-    Параметры разбиения задаются в config.py.
-    При TEST_SIZE=0.2 и VALIDATION_SIZE=0.25 (доля от train_val) получаем:
-        - test:  20% от полного датасета
-        - val:   25% от оставшихся 80% = 20% от полного датасета
-        - train: 75% от оставшихся 80% = 60% от полного датасета
-
-    Returns
-    -------
-    tuple[DataFrame, DataFrame, DataFrame, Series, Series, Series, list]
+    Возвращает tuple[DataFrame, DataFrame, DataFrame, Series, Series, Series, list]
         X_train, X_val, X_test, y_train, y_val, y_test, feature_cols
     """
     from sklearn.model_selection import train_test_split
@@ -117,6 +107,7 @@ def prepare_train_test_val(df: pd.DataFrame):
     # Заполняем пропуски медианой
     X = X.fillna(X.median())
 
+    # Удаление константных признаков
     selector = VarianceThreshold(threshold=0.0)
     X = pd.DataFrame(selector.fit_transform(X), columns=X.columns[selector.get_support()])
     feature_cols = list(X.columns)
@@ -129,7 +120,7 @@ def prepare_train_test_val(df: pd.DataFrame):
     # 2. Из оставшихся 80% выделяем валидацию (25% от train_val, т.е. 20% от полного)
     X_train, X_val, y_train, y_val = train_test_split(
         X_train_val, y_train_val,
-        test_size=VALIDATION_SIZE,  # теперь это доля от train_val
+        test_size=VALIDATION_SIZE,
         random_state=RANDOM_STATE, stratify=y_train_val
     )
 
