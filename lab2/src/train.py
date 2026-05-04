@@ -77,7 +77,7 @@ def build_xgboost_model(**params):
         ("scaler", StandardScaler()),
         ("model", XGBClassifier(
             n_estimators=params.get("n_estimators", 300),
-            max_depth=params.get("max_depth", ),
+            max_depth=params.get("max_depth", 6),
             learning_rate=params.get("learning_rate", 0.1),
             subsample=params.get("subsample", 0.8),
             colsample_bytree=params.get("colsample_bytree", 0.8),
