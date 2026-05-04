@@ -126,6 +126,7 @@ def plot_validation_curve(estimator, X, y, param_name, param_range,
     plt.title(f"Validation Curve for {param_name}")
     plt.legend(loc="best")
     plt.grid(True)
+    plt.ylim(0.7, 1.0)
     if save_path:
         plt.savefig(save_path, dpi=100, bbox_inches="tight")
     plt.close()

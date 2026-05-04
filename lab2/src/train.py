@@ -77,7 +77,7 @@ def build_xgboost_model(**params):
         ("scaler", StandardScaler()),
         ("model", XGBClassifier(
             n_estimators=params.get("n_estimators", 300),
-            max_depth=params.get("max_depth", 6),
+            max_depth=params.get("max_depth", ),
             learning_rate=params.get("learning_rate", 0.1),
             subsample=params.get("subsample", 0.8),
             colsample_bytree=params.get("colsample_bytree", 0.8),
@@ -163,12 +163,12 @@ MODEL_BUILDERS = {
 
 # Гиперпараметры для построения кривых валидации
 HPARAM_VAL_CURVES = {
-    "logistic":      ("model__C",        [0.01, 0.1, 1, 5, 10]),
-    "random_forest": ("model__max_depth", [5, 10, 15, 20, None]),
-    "xgboost":       ("model__max_depth", [3, 5, 7, 10]),
-    "lightgbm":      ("model__max_depth", [5, 10, 15, -1]),
-    "feat_sel":      ("model__C",        [0.01, 0.1, 1, 10]),
-    "imbalanced":    ("model__max_depth", [5, 10, 15, 20]),
+    "logistic":      ("model__C",          [0.0001, 0.001, 0.01, 0.1, 1, 10, 100]),
+    "random_forest": ("model__max_depth",  [3, 5, 10, 15, 20, 30, None]),
+    "xgboost":       ("model__max_depth",  [2, 3, 5, 7, 10, 15]),
+    "lightgbm":      ("model__max_depth",  [2, 5, 10, 15, 20, -1]),
+    "feat_sel":      ("model__C",          [0.0001, 0.001, 0.01, 0.1, 1, 10, 100]),
+    "imbalanced":    ("model__max_depth",  [3, 5, 10, 15, 20, 30]),
 }
 
 
