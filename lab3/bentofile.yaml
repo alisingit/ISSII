@@ -1,0 +1,11 @@
+service: "src.service:svc"
+labels:
+  owner: student
+  project: lab3-olist
+include:
+  - "src/"
+  - "*.py"
+python:
+  requirements_txt: "./requirements.txt"
+models:
+  - olist_classifier:latest
