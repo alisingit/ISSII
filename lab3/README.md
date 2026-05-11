@@ -294,14 +294,3 @@ producer→broker, broker→consumer, consumer→REST. Для интеракти
    упакованы в один компактный файл, рантайм не требует `xgboost`/`sklearn`, BentoML
    импортирует модель штатным `bentoml.onnx.save_model`/`to_runner` без кастомного кода.
 
-## 9. Что соответствует пунктам задания
-
-| Пункт задания | Реализация |
-|---------------|------------|
-| 1a) Анализ форматов экспорта | Раздел 2 этого README |
-| 1b) Экспорт модели | `src/export_model.py` (sklearn pipeline → ONNX через skl2onnx + onnxmltools) |
-| 2) Импорт модели в готовый компонент + REST | `src/service.py` (BentoML ONNX runner, `/predict`) |
-| 3) Нагрузочное тестирование | `locustfile.py`, отчёт в разделе 6 (10/50/100 users) |
-| 4) Брокер сообщений как источник данных | `src/kafka_producer.py`, `src/kafka_consumer.py`, Kafka в `docker-compose.yml` |
-| 5) Мониторинг | Prometheus + Grafana с auto-provisioning датасорса и дашборда |
-| 6) Анализ результатов | Раздел 8 этого README (заполнен по результатам прогонов) |
