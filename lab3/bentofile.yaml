@@ -5,7 +5,9 @@ labels:
 include:
   - "src/"
   - "*.py"
+  - "model.onnx"
 python:
   requirements_txt: "./requirements.txt"
+  lock_packages: false
 models:
   - olist_classifier:latest

@@ -1,6 +1,19 @@
 global:
   scrape_interval: 5s
+  evaluation_interval: 5s
+
 scrape_configs:
-  - job_name: 'bentoml'
+  - job_name: bentoml
+    metrics_path: /metrics
     static_configs:
-      - targets: ['bentoml:3000']   # метрики на основном порту
+      - targets: ["bentoml:3000"]
+
+  - job_name: kafka_consumer
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["kafka_consumer:8000"]
+
+  - job_name: prometheus
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["localhost:9090"]

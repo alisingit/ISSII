@@ -1,0 +1,18 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+ENV PIP_DEFAULT_TIMEOUT=600 \
+    PIP_RETRIES=10 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY requirements-consumer.txt .
+RUN pip install --no-cache-dir -r requirements-consumer.txt
+
+COPY config.py .
+COPY src/ src/
+
+EXPOSE 8000
+
+CMD ["python", "src/kafka_consumer.py"]
