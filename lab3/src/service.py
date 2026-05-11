@@ -36,9 +36,8 @@ svc = bentoml.Service("olist_satisfaction", runners=[_runner])
 def _extract_positive_proba(outputs) -> np.ndarray:
     """Достаёт вероятность класса 1 из выходов ONNX-классификатора.
 
-    Поддерживает оба варианта экспорта:
-    - skl2onnx с zipmap=False: outputs = (labels, probability_matrix);
-    - onnxmltools.convert.xgboost: одиночный массив labels или матрица вероятностей.
+    Принимает либо кортеж `(labels, probability_matrix)`, либо одиночный массив:
+    из 2D-матрицы вероятностей берётся колонка положительного класса.
     """
     if isinstance(outputs, (list, tuple)):
         for out in outputs:
