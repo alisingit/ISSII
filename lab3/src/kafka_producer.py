@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import KAFKA_BOOTSTRAP_SERVERS, INPUT_TOPIC  # noqa: E402
 
-DEFAULT_N_FEATURES = 62
+DEFAULT_N_FEATURES = 71
 
 
 def _create_producer(retries: int = 30, delay: float = 2.0) -> KafkaProducer:

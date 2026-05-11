@@ -12,7 +12,7 @@ import random
 import numpy as np
 from locust import HttpUser, between, task
 
-N_FEATURES = int(os.getenv("LOCUST_N_FEATURES", "62"))
+N_FEATURES = int(os.getenv("LOCUST_N_FEATURES", "71"))
 BATCH_SIZES = [1, 1, 1, 1, 4, 8]
 
 

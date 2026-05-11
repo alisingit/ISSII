@@ -32,7 +32,7 @@ INFERENCE_LATENCY = Histogram(
 
 
 def _wait_for_brokers(timeout: int = 120, delay: float = 2.0) -> None:
-    """Дождаться доступности Kafka — нужно при старте через docker-compose."""
+    """Дождаться доступности Kafka."""
     deadline = time.time() + timeout
     last_error: Exception | None = None
     while time.time() < deadline:
@@ -46,7 +46,7 @@ def _wait_for_brokers(timeout: int = 120, delay: float = 2.0) -> None:
             return
         except NoBrokersAvailable as exc:
             last_error = exc
-        except Exception as exc:  # noqa: BLE001 — kafka-python пробрасывает разное
+        except Exception as exc:  # noqa: BLE001
             last_error = exc
         time.sleep(delay)
     raise RuntimeError(

@@ -3,6 +3,12 @@
 В отличие от прежней версии экспортируется ВЕСЬ sklearn-pipeline
 (StandardScaler + XGBClassifier), чтобы препроцессинг включался в граф ONNX
 и сервис принимал «сырые» признаки, не зависящие от версии sklearn в проде.
+
+Источник модели:
+1) Если задан и существует локальный путь BEST_RUN_PATH — модель загружается напрямую
+   через `mlflow.sklearn.load_model(<path>)` (без MLflow tracking server).
+2) Иначе используется fallback на `runs:/{BEST_RUN_ID}/model` против
+   `MLFLOW_TRACKING_URI`.
 """
 
 import sys
@@ -20,7 +26,12 @@ from xgboost import XGBClassifier
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import BEST_RUN_ID, MLFLOW_TRACKING_URI, ONNX_MODEL_PATH  # noqa: E402
+from config import (  # noqa: E402
+    BEST_RUN_ID,
+    BEST_RUN_PATH,
+    MLFLOW_TRACKING_URI,
+    ONNX_MODEL_PATH,
+)
 
 
 def _register_xgboost_converter() -> None:
@@ -34,9 +45,21 @@ def _register_xgboost_converter() -> None:
     )
 
 
-def export_pipeline() -> Path:
+def _load_pipeline():
+    local = Path(BEST_RUN_PATH) if BEST_RUN_PATH else None
+    if local and local.exists() and local.is_dir():
+        print(f"Загрузка модели из локального пути: {local}")
+        return mlflow.sklearn.load_model(str(local))
+    print(
+        f"Локальный путь не найден ({local}). "
+        f"Загрузка через MLflow tracking URI {MLFLOW_TRACKING_URI}"
+    )
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    pipeline = mlflow.sklearn.load_model(f"runs:/{BEST_RUN_ID}/model")
+    return mlflow.sklearn.load_model(f"runs:/{BEST_RUN_ID}/model")
+
+
+def export_pipeline() -> Path:
+    pipeline = _load_pipeline()
     booster = pipeline.named_steps["model"].get_booster()
     n_features = booster.num_features()
 
